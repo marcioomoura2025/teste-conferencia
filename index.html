@@ -246,6 +246,27 @@ dl.grid dd{margin:0;font-weight:600;font-size:.95rem;word-break:break-word}
 .cam-q small{display:block;opacity:.8;margin-top:2px}
 .galeria .q{color:var(--alerta);font-weight:700}
 
+/* ---------- Leitura da DTA (OCR) ---------- */
+.ocr-box{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;padding:12px 14px;border:1.5px dashed var(--azul-2);border-radius:12px;background:var(--azul-claro);margin-bottom:16px}
+.ocr-box .nota{margin:0;flex:1 1 240px}
+.via-ocr input[type=text]{background:#f1f7ff;border-color:#8fb3e0}
+.via-ocr label.rot::after{content:"lido da DTA";margin-left:8px;font-size:.72rem;font-weight:700;color:var(--azul-2);background:#dce8f7;border-radius:99px;padding:2px 8px;vertical-align:middle}
+#dlg-ocr{border:0;border-radius:16px;padding:0;width:min(760px,calc(100vw - 32px));max-height:calc(100vh - 32px);background:#fff;color:var(--texto);box-shadow:0 20px 60px rgba(0,0,0,.4);overflow:auto}
+#dlg-ocr::backdrop{background:rgba(8,18,30,.72)}
+.ocr-corpo{padding:16px 18px 0}
+.ocr-barra{height:8px;background:#e3e9f0;border-radius:99px;overflow:hidden;margin:10px 0 4px}
+.ocr-barra i{display:block;height:100%;width:0;background:var(--azul-2);transition:width .2s}
+.ocr-linha{display:grid;grid-template-columns:minmax(160px,230px) 1fr;gap:4px 12px;align-items:center;padding:8px 0;border-bottom:1px solid #edf1f5}
+.ocr-linha label{display:flex;gap:10px;align-items:center;font-weight:600;font-size:.95rem;cursor:pointer}
+.ocr-linha input[type=checkbox]{width:22px;height:22px;flex:none}
+.ocr-linha input[type=text]{min-height:46px}
+.ocr-linha small{grid-column:2;font-size:.8rem;color:var(--suave)}
+.ocr-linha .warn{color:var(--alerta);font-weight:700}
+.ocr-linha.ausente{color:var(--suave)}
+.ocr-linha.ausente small{grid-column:auto}
+@media(max-width:560px){.ocr-linha{grid-template-columns:1fr}.ocr-linha small{grid-column:1}}
+.ocr-texto{white-space:pre-wrap;font-size:.75rem;max-height:220px;overflow:auto;background:#f6f8fa;padding:8px;border-radius:8px;margin-top:6px}
+
 #toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#14222f;color:#fff;padding:12px 20px;border-radius:10px;font-size:.95rem;max-width:90vw;z-index:20;box-shadow:0 6px 24px rgba(0,0,0,.25);pointer-events:none}
 
 @media print{
@@ -438,6 +459,32 @@ dl.grid dd{margin:0;font-weight:600;font-size:.95rem;word-break:break-word}
   </div>
 </dialog>
 
+<!-- ================= LEITURA DA DTA (OCR) ================= -->
+<dialog id="dlg-ocr" aria-labelledby="ocr-titulo">
+  <div class="cam-topo">
+    <div><h2 id="ocr-titulo">Leitura da DTA</h2><span class="cam-cont">A leitura é feita no próprio aparelho; a imagem não é enviada para a internet.</span></div>
+    <button type="button" class="cam-x" id="ocr-x" aria-label="Fechar">&times;</button>
+  </div>
+  <div class="ocr-corpo">
+    <div id="ocr-lendo">
+      <p id="ocr-status" role="status" style="margin:0">Preparando o leitor de texto...</p>
+      <div class="ocr-barra"><i id="ocr-barra"></i></div>
+      <p class="nota">Na primeira leitura o leitor de texto é carregado, o que pode levar alguns segundos.</p>
+    </div>
+    <div id="ocr-erro" class="aviso err" hidden></div>
+    <div id="ocr-res" hidden>
+      <p class="regra" style="margin-top:0">Confira os dados lidos. Desmarque o que não quiser preencher e corrija o que for preciso antes de confirmar.</p>
+      <div id="ocr-campos"></div>
+    </div>
+    <details id="ocr-det" hidden style="margin:12px 0 0"><summary>Ver o texto lido</summary><div class="ocr-texto" id="ocr-texto"></div></details>
+  </div>
+  <div class="cam-acoes">
+    <button type="button" class="btn pri" id="ocr-aplicar" hidden>Preencher campos marcados</button>
+    <button type="button" class="btn" id="ocr-outra" hidden>Fotografar de novo</button>
+    <button type="button" class="btn" id="ocr-fechar">Cancelar</button>
+  </div>
+</dialog>
+
 <div id="toast" hidden role="status"></div>
 
 <script>
@@ -627,6 +674,7 @@ const GRUPO_VIOLACAO={id:'violacao', t:'Fotos dos indícios de violação', opci
 const TODOS_GRUPOS=[...GRUPOS, GRUPO_VIOLACAO];
 const grupoPorId = id => TODOS_GRUPOS.find(g=>g.id===id);
 const ORIGEM_TXT = {arquivo:'arquivo anexado', exemplo:'imagem de exemplo'};
+const ICONE_DOC='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/></svg>';
 const ICONE_CAM='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.5"/></svg>';
 
 /* =====================================================================
@@ -671,7 +719,7 @@ function htmlCampo(c){
   if(c.tipo==='opcoes') return htmlOpcoes(c);
   const attrs={
     texto:'maxlength="120" autocapitalize="characters"',
-    dta:'inputmode="numeric" placeholder="00/000000-0" maxlength="11"',
+    dta:'inputmode="numeric" placeholder="00/0000000-0" maxlength="12"',
     doc:'maxlength="15" autocapitalize="characters" spellcheck="false" placeholder="Até 15 letras e números"',
     peso:'inputmode="decimal" maxlength="14" placeholder="0"'
   }[c.tipo];
@@ -682,6 +730,11 @@ function htmlSecao(s){
   let h='', grade=[];
   const fecha=()=>{ if(grade.length){ h+=`<div class="duas">${grade.join('')}</div>`; grade=[]; } };
   if(s.n===10) h+='<div id="atencao"></div>';
+  if(s.n===1) h+=`<div class="ocr-box">
+      <button type="button" class="btn" id="btn-ler-dta">${ICONE_DOC}<span>Ler DTA impressa com a câmera</span></button>
+      <p class="nota">Fotografe o extrato da DTA. Os dados lidos aparecem para conferência antes de preencher o formulário.</p>
+      <input type="file" id="arquivo-doc" accept="image/*" capture="environment" hidden>
+    </div>`;
   for(const c of s.campos){
     if(c.tipo==='opcoes'){ fecha(); if(c.id==='pesagem') h+='<p class="dif" id="dif-peso" hidden></p>'; h+=htmlCampo(c); }
     else grade.push(htmlCampo(c));
@@ -703,7 +756,8 @@ $('#secoes').innerHTML = SECOES.map(htmlSecao).join('');
 $('#grupos-fotos').innerHTML = GRUPOS.map(htmlGrupo).join('');
 
 /* ---------- Máscaras ---------- */
-function maskDTA(v){ const d=soDigitos(v).slice(0,9); return d.replace(/^(\d{2})(\d)/,'$1/$2').replace(/^(\d{2})\/(\d{6})(\d)/,'$1/$2-$3'); }
+/* Nº DTA: aceita 00/0000000-0 (formato do Siscomex) e 00/000000-0 */
+function maskDTA(v){ const d=soDigitos(v).slice(0,10); if(d.length<=2) return d; if(d.length<9) return d.slice(0,2)+'/'+d.slice(2); return d.slice(0,2)+'/'+d.slice(2,-1)+'-'+d.slice(-1); }
 function maskDoc(v){ return v.toUpperCase().normalize('NFD').replace(/[^A-Z0-9]/g,'').slice(0,15); }
 function maskPeso(v){
   v=v.replace(/[^\d,]/g,''); const i=v.indexOf(',');
@@ -730,9 +784,9 @@ const estado = { fotos:{}, gps:null, iniciadoEm:new Date().toISOString(), fotoAt
 const ehMovel = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
              || (navigator.maxTouchPoints>1 && /Macintosh/.test(navigator.userAgent)); /* iPadOS se apresenta como Mac */
 
-/* Reduz para no máximo 1600 px no lado maior (canvas) */
-function reduzir(fonte,w,h){
-  const s=Math.min(1,1600/Math.max(w,h)), c=document.createElement('canvas');
+/* Reduz para no máximo 1600 px no lado maior (fotos) ou 2600 px (documento para leitura de texto) */
+function reduzir(fonte,w,h,max=1600){
+  const s=Math.min(1,max/Math.max(w,h)), c=document.createElement('canvas');
   c.width=Math.round(w*s); c.height=Math.round(h*s);
   c.getContext('2d').drawImage(fonte,0,0,c.width,c.height);
   return c;
@@ -787,6 +841,16 @@ async function processarFoto(file){
     const img=await new Promise((ok,ko)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=()=>ko(new Error('Imagem inválida'));i.src=url});
     const c=reduzir(img,img.naturalWidth,img.naturalHeight);
     return { dataUrl:jpeg(c), qualidade:avaliarQualidade(c,c.width,c.height) };
+  }finally{ URL.revokeObjectURL(url); }
+}
+/* Documento (DTA) para leitura de texto: mais resolução; papel branco não conta como "clara demais" */
+function avaliarDocumento(c){ const q=avaliarQualidade(c,c.width,c.height); q.alertas=q.alertas.filter(a=>a!=='clara demais'); return q; }
+async function processarDocumento(file){
+  const url=URL.createObjectURL(file);
+  try{
+    const img=await new Promise((ok,ko)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=()=>ko(new Error('Imagem inválida'));i.src=url});
+    const c=reduzir(img,img.naturalWidth,img.naturalHeight,2600);
+    return { canvas:c, dataUrl:c.toDataURL('image/jpeg',0.8), qualidade:avaliarDocumento(c) };
   }finally{ URL.revokeObjectURL(url); }
 }
 function salvarFoto(gid,dataUrl,capturadaEm,origem,qualidade=null){
@@ -849,7 +913,10 @@ $('#arquivo-foto').addEventListener('change',async e=>{
 /* ---------- Janela da webcam ---------- */
 const Camera = (()=>{
   const dlg=$('#dlg-camera'), video=$('#cam-video'), still=$('#cam-still'), msg=$('#cam-msg');
-  let stream=null, cams=[], idx=0, grupo=null, captura=null, geracao=0, fonte='webcam';
+  let stream=null, cams=[], idx=0, grupo=null, captura=null, geracao=0, fonte='webcam', opts={};
+  /* opts.aoUsar: modo documento (a foto vai para a leitura da DTA, não para um item de fotos)
+     opts.abrirArquivo: seletor de arquivo alternativo */
+  const abrirArq = () => (opts.abrirArquivo || abrirSeletorArquivo)();
   const emMoldura = (()=>{ try{ return window.self!==window.top; }catch(e){ return true; } })();
 
   function modo(s){
@@ -867,12 +934,13 @@ const Camera = (()=>{
         box.className='cam-q ok';
         box.innerHTML=`<b>Qualidade adequada.</b> A foto parece nítida e bem iluminada.<small>Nitidez ${q.nitidez} &middot; brilho ${q.brilho}</small>`;
       }
-      $('#cam-usar').textContent = al.length ? 'Usar mesmo assim' : 'Usar esta foto';
-      $('#cam-mais').hidden = fonte!=='webcam';
+      $('#cam-usar').textContent = opts.aoUsar ? (al.length ? 'Ler mesmo assim' : 'Ler este documento') : (al.length ? 'Usar mesmo assim' : 'Usar esta foto');
+      $('#cam-mais').hidden = fonte!=='webcam' || !!opts.aoUsar;
       $('#cam-descartar').textContent = fonte==='webcam' ? 'Descartar' : 'Descartar e tirar outra';
     }
   }
   function contagem(){
+    if(opts.aoUsar){ $('#cam-cont').textContent='Enquadre a folha inteira, bem iluminada, sem reflexo e com a câmera paralela ao papel'; return; }
     const n=(estado.fotos[grupo]||[]).length;
     $('#cam-cont').textContent = n===0 ? 'Nenhuma foto neste item ainda' : n===1 ? '1 foto salva neste item' : n+' fotos salvas neste item';
   }
@@ -916,8 +984,8 @@ const Camera = (()=>{
   }
   function capturar(){
     if(!video.videoWidth){ toast('A câmera ainda está iniciando. Tente de novo em instantes.'); return; }
-    const c=reduzir(video,video.videoWidth,video.videoHeight);
-    captura={ dataUrl:jpeg(c), qualidade:avaliarQualidade(c,c.width,c.height), capturadaEm:new Date().toISOString() };
+    const c=reduzir(video,video.videoWidth,video.videoHeight, opts.aoUsar ? 2600 : 1600);
+    captura={ canvas:opts.aoUsar ? c : null, dataUrl:jpeg(c), qualidade:opts.aoUsar ? avaliarDocumento(c) : avaliarQualidade(c,c.width,c.height), capturadaEm:new Date().toISOString() };
     still.src=captura.dataUrl;
     const f=$('#cam-flash'); f.classList.remove('on'); void f.offsetWidth; f.classList.add('on');
     modo('revisao'); (captura.qualidade.alertas.length ? $('#cam-descartar') : $('#cam-usar')).focus();
@@ -927,35 +995,332 @@ const Camera = (()=>{
 
   dlg.addEventListener('close',()=>{ parar(); captura=null; still.removeAttribute('src'); });
   $('#cam-capturar').addEventListener('click',capturar);
-  $('#cam-usar').addEventListener('click',()=>{ guardar(); fechar(); });
+  $('#cam-usar').addEventListener('click',()=>{
+    if(opts.aoUsar){ const cb=opts.aoUsar, cap=captura; captura=null; fechar(); if(cap) cb(cap); return; }
+    guardar(); fechar();
+  });
   $('#cam-mais').addEventListener('click',()=>{ guardar(); modo('aovivo'); $('#cam-capturar').focus(); });
   $('#cam-descartar').addEventListener('click',()=>{
     captura=null;
     if(fonte==='webcam'){ modo('aovivo'); $('#cam-capturar').focus(); }
-    else { fechar(); abrirSeletorArquivo(); }   /* volta para a câmera do aparelho / seletor de arquivo */
+    else { fechar(); abrirArq(); }   /* volta para a câmera do aparelho / seletor de arquivo */
   });
   $('#cam-tentar').addEventListener('click',()=>iniciar());
   $('#cam-trocar').addEventListener('click',()=>{ if(cams.length<2) return; idx=(idx+1)%cams.length; iniciar(cams[idx].deviceId); });
-  $('#cam-arquivo').addEventListener('click',()=>{ fechar(); abrirSeletorArquivo(); });
+  $('#cam-arquivo').addEventListener('click',()=>{ fechar(); abrirArq(); });
   $('#cam-fechar').addEventListener('click',fechar);
   $('#cam-x').addEventListener('click',fechar);
 
   return {
-    abrir(gid,titulo){
-      grupo=gid; estado.fotoAtual=gid; captura=null; fonte='webcam';
-      if(typeof dlg.showModal!=='function'){ abrirSeletorArquivo(); return; }
+    abrir(gid,titulo,o={}){
+      grupo=gid; if(gid) estado.fotoAtual=gid; captura=null; fonte='webcam'; opts=o;
+      if(typeof dlg.showModal!=='function'){ abrirArq(); return; }
       $('#cam-titulo').textContent=titulo; contagem();
       dlg.showModal(); iniciar();
     },
     /* Revisão de uma foto vinda da câmera do aparelho ou de arquivo (usada quando há alerta de qualidade) */
-    revisar(gid,titulo,cap,origem){
-      grupo=gid; estado.fotoAtual=gid; captura=cap; fonte=origem;
-      if(typeof dlg.showModal!=='function'){ salvarFoto(gid,cap.dataUrl,cap.capturadaEm,origem,cap.qualidade); return; }
+    revisar(gid,titulo,cap,origem,o={}){
+      grupo=gid; if(gid) estado.fotoAtual=gid; captura=cap; fonte=origem; opts=o;
+      if(typeof dlg.showModal!=='function'){ if(o.aoUsar) o.aoUsar(cap); else salvarFoto(gid,cap.dataUrl,cap.capturadaEm,origem,cap.qualidade); return; }
       $('#cam-titulo').textContent=titulo; contagem();
       still.src=cap.dataUrl; dlg.showModal(); modo('revisao'); $('#cam-descartar').focus();
     }
   };
 })();
+
+/* =====================================================================
+   Leitura da DTA impressa (OCR)
+   Motor: Tesseract.js (licença Apache-2.0), executado no próprio aparelho.
+   No app instalável os arquivos ficam na pasta ocr/ e funcionam offline;
+   no arquivo único de demonstração são baixados da internet (CDN) no primeiro uso.
+   ===================================================================== */
+const OCR_LOCAL = true;
+const OCR_VERSAO = '7.0.0';
+const OCR_CAMPOS = [
+  {chave:'dta',             alvo:'dta',             rot:'Nº DTA'},
+  {chave:'urfOrigem',       alvo:'urfOrigem',       rot:'URF de Origem'},
+  {chave:'urfDestino',      alvo:'urfDestino',      rot:'URF de Destino'},
+  {chave:'transportadora',  alvo:'transportadora',  rot:'Transportadora'},
+  {chave:'docDtaMic',       alvo:'docDtaMic',       rot:'DTA/MIC-DTA apresentada'},
+  {chave:'docConhecimento', alvo:'docConhecimento', rot:'Conhecimento de Transporte'},
+  {chave:'peso',            alvo:'pesoDocumental',  rot:'Peso documental (kg)'}
+];
+function ocrCaminhos(){
+  const abs = p => new URL(p, location.href).href;
+  let simd=false;
+  try{ simd=WebAssembly.validate(new Uint8Array([0,97,115,109,1,0,0,0,1,5,1,96,0,1,123,3,2,1,0,10,10,1,8,0,65,0,253,15,253,98,11])); }catch(e){}
+  const nucleo = simd ? 'tesseract-core-simd-lstm.wasm.js' : 'tesseract-core-lstm.wasm.js';
+  if(OCR_LOCAL) return { script:abs('ocr/tesseract.min.js'), workerPath:abs('ocr/worker.min.js'), corePath:abs('ocr/'+nucleo), langPath:abs('ocr/lang') };
+  const cdn='https://cdn.jsdelivr.net/npm/';
+  return { script:`${cdn}tesseract.js@${OCR_VERSAO}/dist/tesseract.min.js`, workerPath:`${cdn}tesseract.js@${OCR_VERSAO}/dist/worker.min.js`,
+           corePath:`${cdn}tesseract.js-core@${OCR_VERSAO}/${nucleo}`, langPath:`${cdn}@tesseract.js-data/por/4.0.0_best_int` };
+}
+function carregarScript(src){
+  return new Promise((ok,ko)=>{ const s=document.createElement('script'); s.src=src; s.onload=ok; s.onerror=()=>ko(new Error('script')); document.head.appendChild(s); });
+}
+let ocrWorker=null, ocrLog=null;
+async function obterWorkerOCR(){
+  if(ocrWorker) return ocrWorker;
+  const c=ocrCaminhos();
+  if(!window.Tesseract) await carregarScript(c.script);
+  ocrWorker = await Promise.race([
+    Tesseract.createWorker('por', 1, { workerPath:c.workerPath, corePath:c.corePath, langPath:c.langPath,
+      logger:m=>{ if(ocrLog) ocrLog(m); }, errorHandler:()=>{} }),
+    new Promise((_,ko)=>setTimeout(()=>ko(new Error('tempo esgotado')),90000))
+  ]);
+  return ocrWorker;
+}
+
+/* Corrige sombra/iluminação desigual (divide pelo fundo estimado) e aumenta o contraste */
+function prepararOCR(fonte){
+  const W=fonte.width, H=fonte.height;
+  const c=document.createElement('canvas'); c.width=W; c.height=H;
+  const x=c.getContext('2d',{willReadFrequently:true}); x.drawImage(fonte,0,0);
+  const p=document.createElement('canvas'); p.width=Math.max(1,W>>5); p.height=Math.max(1,H>>5);
+  p.getContext('2d').drawImage(fonte,0,0,p.width,p.height);
+  const f=document.createElement('canvas'); f.width=W; f.height=H;
+  const fx=f.getContext('2d',{willReadFrequently:true}); fx.imageSmoothingEnabled=true; fx.drawImage(p,0,0,W,H);
+  const im=x.getImageData(0,0,W,H), d=im.data, bg=fx.getImageData(0,0,W,H).data;
+  for(let j=0;j<d.length;j+=4){
+    const y=0.299*d[j]+0.587*d[j+1]+0.114*d[j+2], b=0.299*bg[j]+0.587*bg[j+1]+0.114*bg[j+2];
+    const v=Math.max(0,Math.min(255,(y/Math.max(30,b))*245));
+    d[j]=d[j+1]=d[j+2]=v;
+  }
+  x.putImageData(im,0,0); return c;
+}
+function girar(canvas,graus){
+  const c=document.createElement('canvas'), r=graus%180!==0;
+  c.width=r?canvas.height:canvas.width; c.height=r?canvas.width:canvas.height;
+  const x=c.getContext('2d'); x.translate(c.width/2,c.height/2); x.rotate(graus*Math.PI/180); x.drawImage(canvas,-canvas.width/2,-canvas.height/2);
+  return c;
+}
+async function reconhecer(worker,canvas){
+  const {data}=await worker.recognize(canvas,{},{text:true,blocks:true});
+  const L=[];
+  (data.blocks||[]).forEach(b=>(b.paragraphs||[]).forEach(p=>(p.lines||[]).forEach(l=>{ const t=(l.text||'').trim(); if(t) L.push({texto:t, conf:l.confidence}); })));
+  if(!L.length) (data.text||'').split('\n').map(t=>t.trim()).filter(Boolean).forEach(t=>L.push({texto:t, conf:null}));
+  return {linhas:L, texto:data.text||''};
+}
+
+/* ---------- Interpretação do extrato da DTA (Siscomex Trânsito) ---------- */
+const semAcento = s => s.normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase();
+const paraDigitos = s => s.replace(/[Oo]/g,'0').replace(/[Il|]/g,'1').replace(/[Ss]/g,'5').replace(/B/g,'8');   /* confusões típicas de OCR em números */
+const limparOCR = s => s.replace(/^[\s:;.,|_\-–—]+|[\s|_]+$/g,'').replace(/\s{2,}/g,' ').trim();
+/* Valor depois do rótulo: procura o rótulo e pega o que vem após o ":" seguinte */
+function valorApos(l, reRot){
+  const m=new RegExp(reRot.source).exec(l.n);
+  if(m && l.n.length===l.texto.length){
+    const ini=m.index+m[0].length, k=l.texto.indexOf(':',ini);
+    return limparOCR(k>=0 && k-ini<6 ? l.texto.slice(k+1) : l.texto.slice(ini));
+  }
+  const k=l.texto.indexOf(':');
+  if(k>=0) return limparOCR(l.texto.slice(k+1));
+  return m ? limparOCR(l.n.slice(m.index+m[0].length)) : '';
+}
+const CHAVES_OCR=['dta','urfOrigem','urfDestino','transportadora','docConhecimento','peso'];
+function extrairDTA(linhas){
+  const L=linhas.map(l=>({...l, n:semAcento(l.texto)}));
+  const r={};
+  const idx=re=>L.findIndex(l=>re.test(l.n));
+  const confDe=i=>L[i].conf==null ? 0 : L[i].conf;
+
+  /* Nº da declaração (00/0000000-0): compara o título da página com o campo "No. da Declaração" */
+  const reNum=/(\d{2})\s*\/\s*(\d{6,7})\s*-\s*(\d)(?!\d)/, cands=[];
+  L.forEach((l,i)=>{ if(!/DECLARA/.test(l.n)) return; const m=paraDigitos(l.texto.split(':').slice(1).join(':')).match(reNum); if(m) cands.push({valor:`${m[1]}/${m[2]}-${m[3]}`, conf:confDe(i)}); });
+  if(!cands.length) L.forEach((l,i)=>{ const m=l.texto.match(reNum); if(m) cands.push({valor:`${m[1]}/${m[2]}-${m[3]}`, conf:confDe(i)}); });
+  if(cands.length){
+    const votos={}; cands.forEach(c=>{ const v=votos[c.valor]||(votos[c.valor]={n:0,conf:0}); v.n++; v.conf=Math.max(v.conf,c.conf); });
+    const [valor,v]=Object.entries(votos).sort((a,b)=>b[1].n-a[1].n || b[1].conf-a[1].conf)[0];
+    const diverge=Object.keys(votos).length>1;
+    r.dta={valor, conf: diverge ? Math.min(v.conf,60) : (v.n>1 ? Math.max(v.conf,90) : v.conf), nota: diverge ? 'o número aparece diferente em pontos do documento' : ''};
+  }
+
+  /* Unidade Local (URF) de origem e de destino */
+  const unidades=[]; L.forEach((l,i)=>{ if(/UNIDADE\s*LOCAL/.test(l.n)) unidades.push(i); });
+  const cab=pal=>L.findIndex(l=>l.n.replace(/[^A-Z]/g,'')===pal);
+  const iO=cab('ORIGEM'), iDs=cab('DESTINO');
+  const depois=i=>unidades.find(u=>u>i && u<=i+4);
+  let uO = iO>=0 ? depois(iO) : undefined, uD = iDs>=0 ? depois(iDs) : undefined;
+  if(uO===undefined && unidades.length) uO=unidades[0];
+  if(uD===undefined) uD=unidades.find(u=>u!==uO);
+  const urf=i=>{
+    let v=valorApos(L[i],/UNIDADE\s*LOCAL/), conf=confDe(i);
+    const m=v.match(/^([0-9OoIlSB\s\/]{7,9}?)\s*[-–—]\s*(.*)$/) || v.match(/^([0-9OoIlSB]{7})\s*(.*)$/);
+    if(m){ const cod=paraDigitos(m[1]).replace(/\s/g,''); v=cod+(m[2]?' - '+limparOCR(m[2]):''); if(!/^\d{7}$/.test(cod)) conf=Math.min(conf,50); }
+    return v ? {valor:v, conf} : null;
+  };
+  if(uO!==undefined){ const x=urf(uO); if(x) r.urfOrigem=x; }
+  if(uD!==undefined){ const x=urf(uD); if(x) r.urfDestino=x; }
+
+  /* Transportador: "Nome do Transportador: ..." (tolera "Nome" mal lido) */
+  let iT=idx(/NOME\s*DO\s*TRANSPORTADOR/);
+  if(iT<0) iT=L.findIndex(l=>/TRANSPORTAD/.test(l.n) && !/CNPJ|CPF|PJ\s*\/|BENEFIC|VIA\s*DE/.test(l.n) && l.texto.includes(':'));
+  if(iT>=0){ const v=valorApos(L[iT],/TRANSPORTADOR/); if(v) r.transportadora={valor:v, conf:confDe(iT)}; }
+
+  /* Quantidade de cargas: "(1 a 2/Total : 2)" ou contagem de "Identificação da Carga" */
+  const cargas=[]; L.forEach((l,i)=>{ if(/IDENTIFICA\w*\s*DA\s*CARGA/.test(l.n)) cargas.push(i); });
+  const mt=L.map(l=>l.n.match(/TOTAL\s*:?\s*(\d{1,3})\s*\)/)).find(Boolean);
+  const totalCargas=Math.max(cargas.length, mt ? +mt[1] : 0);
+
+  /* Conhecimento: "Identificação da Carga" da 1ª carga; prefixo tipo CEMERCANTE removido mesmo se mal lido */
+  if(cargas.length){
+    const i=cargas[0];
+    let v=valorApos(L[i],/IDENTIFICA\w*\s*DA\s*CARGA/).replace(/\s+/g,'');
+    const mp=v.match(/^([A-Za-z]{6,12})[-:.]?([0-9OoIlSB|][0-9OoIlSB|\-.]{9,})$/);
+    if(mp) v=paraDigitos(mp[2]).replace(/\D/g,'');
+    else if(/^[0-9OoIlSB|]+$/.test(v)) v=paraDigitos(v);
+    v=v.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,15);
+    if(v) r.docConhecimento={valor:v, conf:confDe(i), nota: totalCargas>1 ? `a DTA tem ${totalCargas} cargas; foi usada a 1ª` : ''};
+  }
+
+  /* Peso bruto: soma de todas as cargas; o Siscomex mostra sempre 3 casas decimais (ex.: 1.250,500 Kg) */
+  let soma=0, nP=0, confP=null;
+  L.forEach((l,i)=>{
+    if(!/PESO\s*BRUTO/.test(l.n)) return;
+    const seg=paraDigitos(valorApos(l,/PESO\s*BRUTO(\s*DA\s*CARGA)?/));
+    let x=NaN, m=seg.match(/(\d{1,3}(?:\.\d{3})*|\d+)[,\s.](\d{3})\s*K/i);
+    if(m) x=Number(m[1].replace(/\./g,'')+'.'+m[2]);
+    else { m=seg.match(/(\d[\d.]*(?:,\d+)?)/); if(m) x=Number(m[1].replace(/\./g,'').replace(',','.')); }
+    if(isFinite(x)){ soma+=x; nP++; confP = confP==null ? confDe(i) : Math.min(confP,confDe(i)); }
+  });
+  if(nP){
+    const falta = totalCargas>nP;
+    r.peso={valor:fmtNum(Math.round(soma*1000)/1000), conf: falta ? Math.min(confP,40) : confP, n:nP,
+            nota: falta ? `peso encontrado em ${nP} de ${totalCargas} cargas; confira o total` : (nP>1 ? `soma de ${nP} cargas` : '')};
+  }
+  return completarOCR(r);
+}
+function completarOCR(r){
+  if(r.dta) r.docDtaMic={valor:r.dta.valor.replace(/\D/g,''), conf:r.dta.conf, nota:'número da própria DTA'};
+  r.achados=CHAVES_OCR.filter(k=>r[k]).length;
+  return r;
+}
+/* Junta duas tentativas de leitura, ficando com o valor de maior confiança de cada campo */
+function combinarOCR(a,b){
+  if(!a) return b;
+  const r={...a};
+  for(const k of CHAVES_OCR){
+    const x=a[k], y=b[k]; if(!y) continue;
+    if(k==='peso'){ if(!x || y.n>x.n || (y.n===x.n && (y.conf||0)>(x.conf||0))) r.peso=y; }
+    else if(!x || (y.conf||0)>(x.conf||0)) r[k]=y;
+    /* duas leituras com valores diferentes: marca para conferência */
+    if(x && x.valor!==y.valor && !(k==='peso' && x.n!==y.n)){
+      const nota=[r[k].nota,'leituras diferentes entre tentativas'].filter(Boolean).join('; ');
+      r[k]={...r[k], conf:Math.min(r[k].conf||0,60), nota};
+    }
+  }
+  return completarOCR(r);
+}
+const ocrCompleto = r => r.achados===CHAVES_OCR.length && CHAVES_OCR.every(k=>(r[k].conf||0)>=70);
+
+/* ---------- Fluxo na tela ---------- */
+function ocrModo(s){
+  $('#ocr-lendo').hidden = s!=='lendo';
+  $('#ocr-res').hidden = s!=='resultado';
+  $('#ocr-erro').hidden = s!=='erro';
+  $('#ocr-aplicar').hidden = s!=='resultado';
+  $('#ocr-outra').hidden = s==='lendo';
+  $('#ocr-det').hidden = s==='lendo' || !$('#ocr-texto').textContent;
+}
+function ocrErro(msg){ $('#ocr-erro').textContent=msg; ocrModo('erro'); }
+function abrirArquivoDoc(){ const i=$('#arquivo-doc'); i.value=''; i.click(); }
+function iniciarLeituraDTA(){
+  if(ehMovel) abrirArquivoDoc();
+  else Camera.abrir(null,'Extrato da DTA',{aoUsar:lerDTA, abrirArquivo:abrirArquivoDoc});
+}
+async function lerDTA(cap){
+  const dlg=$('#dlg-ocr');
+  $('#ocr-texto').textContent=''; $('#ocr-barra').style.width='0%';
+  $('#ocr-status').textContent='Preparando o leitor de texto...';
+  ocrModo('lendo');
+  if(!dlg.open) dlg.showModal();
+  let fase='';
+  ocrLog = m => {
+    if(m.status==='recognizing text'){
+      const p=Math.round((m.progress||0)*100);
+      $('#ocr-status').textContent=`${fase}Lendo o documento... ${p}%`; $('#ocr-barra').style.width=p+'%';
+    } else $('#ocr-status').textContent='Carregando o leitor de texto...';
+  };
+  let worker;
+  try{ worker=await obterWorkerOCR(); }
+  catch(e){
+    ocrWorker=null;
+    ocrErro('Não foi possível carregar o leitor de texto. '+(OCR_LOCAL
+      ? 'Abra o app uma vez com internet para que o leitor seja guardado no aparelho e tente de novo.'
+      : 'Neste arquivo de demonstração a leitura precisa de internet. No app instalado, ela funciona sem internet.'));
+    return;
+  }
+  /* Foto de baixa resolução (ex.: webcam): amplia para o texto ficar com tamanho bom para o OCR */
+  let fonteOCR=cap.canvas;
+  if(Math.max(fonteOCR.width,fonteOCR.height)<2200){ const k=2400/Math.max(fonteOCR.width,fonteOCR.height), c=document.createElement('canvas');
+    c.width=Math.round(fonteOCR.width*k); c.height=Math.round(fonteOCR.height*k); const x=c.getContext('2d'); x.imageSmoothingQuality='high'; x.drawImage(fonteOCR,0,0,c.width,c.height); fonteOCR=c; }
+  /* Tentativas: foto original; se faltar algo, versão com correção de sombra; se quase nada for lido, outras orientações */
+  let melhor=null, texto='', melhorQtd=-1;
+  const fila=[{g:0,prep:false}], feitas=new Set();
+  try{
+    while(fila.length){
+      if(!dlg.open) return;
+      const t=fila.shift(), chaveT=t.g+'-'+t.prep; if(feitas.has(chaveT)) continue; feitas.add(chaveT);
+      fase = t.g ? 'Tentando outra orientação. ' : (t.prep ? 'Refinando a leitura. ' : '');
+      let img = t.prep ? prepararOCR(fonteOCR) : fonteOCR;
+      if(t.g) img=girar(img,t.g);
+      const res=await reconhecer(worker,img), dados=extrairDTA(res.linhas);
+      if(dados.achados>melhorQtd){ melhorQtd=dados.achados; texto=res.texto; }
+      melhor=combinarOCR(melhor,dados);
+      if(ocrCompleto(melhor)) break;
+      if(t.g===0 && !t.prep){
+        if(dados.achados===0) fila.push({g:90,prep:false},{g:270,prep:false},{g:180,prep:false});
+        else fila.push({g:0,prep:true});
+      }
+    }
+  }catch(e){ ocrErro('Ocorreu um erro durante a leitura. Tente fotografar de novo.'); return; }
+  if(!dlg.open) return;
+  $('#ocr-texto').textContent = texto;
+  if(!melhor || !melhor.achados){
+    ocrErro('Não consegui identificar os dados da DTA nesta foto. Tente de novo com a folha inteira enquadrada, bem iluminada, sem reflexo e com a câmera paralela ao papel.');
+    return;
+  }
+  mostrarResultadoOCR(melhor);
+}
+function mostrarResultadoOCR(d){
+  $('#ocr-campos').innerHTML = OCR_CAMPOS.map(c=>{
+    const v=d[c.chave];
+    if(!v) return `<div class="ocr-linha ausente"><label><input type="checkbox" disabled> ${c.rot}</label><small>não encontrado no documento</small></div>`;
+    const atual=valor(c.alvo), notas=[];
+    if(v.conf!=null && v.conf<70) notas.push('<span class="warn">leitura incerta, confira</span>');
+    if(v.nota) notas.push(esc(v.nota));
+    if(atual && atual!==v.valor) notas.push('substitui o valor atual: '+esc(atual));
+    return `<div class="ocr-linha"><label><input type="checkbox" data-chave="${c.chave}" checked> ${c.rot}</label>
+      <input type="text" data-chave="${c.chave}" value="${esc(v.valor)}" aria-label="${c.rot}">${notas.length?`<small>${notas.join(' &middot; ')}</small>`:''}</div>`;
+  }).join('');
+  ocrModo('resultado');
+}
+$('#btn-ler-dta').addEventListener('click',iniciarLeituraDTA);
+$('#arquivo-doc').addEventListener('change',async e=>{
+  const f=e.target.files[0]; if(!f) return;
+  try{
+    const cap=await processarDocumento(f); cap.capturadaEm=new Date().toISOString();
+    if(cap.qualidade.alertas.length) Camera.revisar(null,'Extrato da DTA',cap, ehMovel?'camera-aparelho':'arquivo', {aoUsar:lerDTA, abrirArquivo:abrirArquivoDoc});
+    else lerDTA(cap);
+  }catch(err){ toast('A imagem não pôde ser lida.'); }
+});
+$('#ocr-aplicar').addEventListener('click',()=>{
+  const aplicados=[];
+  $$('#ocr-campos input[type=checkbox]:checked').forEach(cb=>{
+    const c=OCR_CAMPOS.find(x=>x.chave===cb.dataset.chave);
+    const v=$(`#ocr-campos input[type=text][data-chave="${c.chave}"]`).value.trim(); if(!v) return;
+    const el=$('#'+c.alvo); el.value=v;
+    el.dispatchEvent(new Event('input',{bubbles:true}));
+    if(c.alvo==='pesoDocumental') el.dispatchEvent(new Event('blur'));
+    el.closest('.campo').classList.add('via-ocr'); aplicados.push(c.rot);
+  });
+  if(aplicados.length) estado.ocr={ lidoEm:new Date().toISOString(), campos:[...new Set([...(estado.ocr?estado.ocr.campos:[]), ...aplicados])] };
+  $('#dlg-ocr').close();
+  toast(aplicados.length ? `${aplicados.length} ${aplicados.length===1?'campo preenchido':'campos preenchidos'} a partir da DTA. Confira antes de finalizar.` : 'Nenhum campo foi preenchido.',5000);
+});
+$('#ocr-outra').addEventListener('click',()=>{ $('#dlg-ocr').close(); iniciarLeituraDTA(); });
+$('#ocr-fechar').addEventListener('click',()=>$('#dlg-ocr').close());
+$('#ocr-x').addEventListener('click',()=>$('#dlg-ocr').close());
 
 /* =====================================================================
    Data, hora e GPS
@@ -1034,7 +1399,7 @@ function pendencias(){
     if(c.emChave && !chaveLigada()) continue;          /* item 9 desligado: nada a responder */
     const v = c.tipo==='opcoes' ? radio(c.id) : valor(c.id);
     if(c.tipo==='texto') req(v, {campo:c.id, msg:'Campo obrigatório.'});
-    if(c.tipo==='dta')   req(/^\d{2}\/\d{6}-\d$/.test(v), {campo:c.id, msg:'Informe o Nº DTA no formato 00/000000-0.'});
+    if(c.tipo==='dta')   req(/^\d{2}\/\d{6,7}-\d$/.test(v), {campo:c.id, msg:'Informe o Nº DTA no formato 00/0000000-0.'});
     if(c.tipo==='doc')   req(/^[A-Z0-9]{1,15}$/.test(v), {campo:c.id, msg:'Informe o número do documento (até 15 letras e números).'});
     if(c.tipo==='peso')  req(parsePeso(v)>0, {campo:c.id, msg:'Informe o peso em kg.'});
     if(c.tipo==='opcoes'){
@@ -1120,6 +1485,7 @@ function atualizarTudo(){ atualizaCondicionais(); pintarAtencao(); pintarDif(); 
 function aoMudar(e){
   const c=e.target.closest('[data-campo]');
   if(c){ c.classList.remove('invalido'); const er=c.querySelector(':scope > .erro'); if(er) er.textContent=''; }
+  if(c && e.isTrusted && e.type==='input') c.classList.remove('via-ocr');   /* editado à mão: deixa de ser "lido da DTA" */
   atualizarTudo();
 }
 $('#form').addEventListener('input',aoMudar);
@@ -1168,6 +1534,8 @@ async function montarRelatorio(){
       fusoHorario:Intl.DateTimeFormat().resolvedOptions().timeZone,
       gps: gps ? {latitude:gps.latitude, longitude:gps.longitude, precisaoM:gps.precisaoM, obtidoEm:gps.obtidoEm} : null,
       gpsMotivoAusencia: gps ? null : ((estado.gps&&estado.gps.erro)||'GPS não obtido'),
+      ocrDTA: estado.ocr ? (()=>{ const mantidos=OCR_CAMPOS.filter(c=>$('#'+c.alvo).closest('.campo').classList.contains('via-ocr')).map(c=>c.rot);
+        return {lidoEm:estado.ocr.lidoEm, camposPreenchidos:mantidos, editadosDepois:estado.ocr.campos.filter(x=>!mantidos.includes(x))}; })() : null,
       dispositivo:navigator.userAgent
     },
     fotos,
@@ -1197,7 +1565,8 @@ $('#form').addEventListener('submit',async e=>{
 });
 function resetForm(){
   $('#form').reset(); limparErros();
-  estado.fotos={}; estado.iniciadoEm=new Date().toISOString();
+  estado.fotos={}; estado.iniciadoEm=new Date().toISOString(); estado.ocr=null;
+  $$('.via-ocr').forEach(e=>e.classList.remove('via-ocr'));
   TODOS_GRUPOS.forEach(g=>pintarGrupo(g.id));
   Object.values(ASSIN).forEach(a=>a.init());
   atualizarTudo();
@@ -1280,6 +1649,8 @@ function mostrarRelatorio(rec, recemCriado){
         linhas+=`<div class="it"><dt>Diferença</dt><dd>${s2(k.pesoDiferencaKg)}${fmtNum(k.pesoDiferencaKg)} kg (${s2(pct)}${fmtNum(pct,2)}%)</dd></div>`;
       }
     }
+    if(s.n===1 && c.registro.ocrDTA)
+      linhas+=`<div class="det" style="background:var(--azul-claro)"><b>Leitura automática da DTA:</b> ${c.registro.ocrDTA.camposPreenchidos.length ? esc(c.registro.ocrDTA.camposPreenchidos.join(', '))+' (preenchidos pela leitura do documento e conferidos pelo responsável)' : 'nenhum campo mantido como lido'}${c.registro.ocrDTA.editadosDepois.length ? '. Editados à mão depois da leitura: '+esc(c.registro.ocrDTA.editadosDepois.join(', ')) : ''}.</div>`;
     secoes+=`<section class="rel-secao curta"><h3>${s.n}. ${s.t}</h3><dl class="itens">${linhas}</dl></section>`;
   }
 
@@ -1404,6 +1775,7 @@ async function exportarCSV(){
   cols.push(
     ['Pontos de atenção (qtd)', r=>C(r).pontosDeAtencao.length],
     ['Pontos de atenção', r=>C(r).pontosDeAtencao.join(' | '), true],
+    ['Campos lidos da DTA (OCR)', r=>C(r).registro.ocrDTA ? C(r).registro.ocrDTA.camposPreenchidos.join(' | ') : '', true],
     ['Fotos anexadas', r=>C(r).fotos.length],
     ['Fotos com alerta de qualidade', r=>C(r).fotos.filter(f=>alertasDe(f).length).length],
     ['Observações', r=>C(r).campos.observacoes, true],

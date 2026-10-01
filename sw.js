@@ -1,8 +1,20 @@
 /* Service worker: guarda o app no aparelho para funcionar sem internet.
-   Ao publicar uma nova versão do index.html, altere VERSAO abaixo. */
-const VERSAO = 'conferencia-v3';
-const ARQUIVOS = ['./', './index.html', './manifest.webmanifest',
-  './icons/icon-192.png', './icons/icon-512.png', './icons/icon-512-maskable.png', './icons/apple-touch-icon.png'];
+   Ao publicar uma nova versão, altere VERSAO abaixo. */
+const VERSAO = 'conferencia-v4';
+const ARQUIVOS = [
+    "./",
+    "./index.html",
+    "./manifest.webmanifest",
+    "./icons/icon-192.png",
+    "./icons/icon-512.png",
+    "./icons/icon-512-maskable.png",
+    "./icons/apple-touch-icon.png",
+    "./ocr/tesseract.min.js",
+    "./ocr/worker.min.js",
+    "./ocr/tesseract-core-simd-lstm.wasm.js",
+    "./ocr/tesseract-core-lstm.wasm.js",
+    "./ocr/lang/por.traineddata.gz"
+  ];
 
 self.addEventListener('install', e => {
   e.waitUntil(

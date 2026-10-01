@@ -1,0 +1,9 @@
+COMPONENTES DE TERCEIROS USADOS NA LEITURA DA DTA (OCR)
+
+tesseract.js 7.0.0 e tesseract.js-core 7.0.0
+  Licença Apache 2.0 - https://github.com/naptha/tesseract.js
+Dados de idioma português (por.traineddata, tessdata "best_int")
+  Projeto Tesseract OCR, licença Apache 2.0 - https://github.com/tesseract-ocr/tessdata
+  Distribuído pelo pacote @tesseract.js-data/por (licença MIT)
+
+O texto integral das licenças está nos arquivos LICENSE-*.txt desta pasta.

@@ -13,6 +13,7 @@ CONTEÚDO DA PASTA
   manifest.webmanifest  nome, cores e ícones do app
   sw.js                 service worker: guarda o app no aparelho para uso offline
   icons/                ícones da tela inicial
+  ocr/                  leitor de texto para a leitura da DTA (funciona offline)
   LEIA-ME.txt           este arquivo
 
 PUBLICAÇÃO (TI)
@@ -37,7 +38,7 @@ INSTALAÇÃO NO IPAD
 
 ATUALIZAÇÕES
 Ao publicar uma nova versão do index.html, altere a linha VERSAO no início do sw.js
-(exemplo: 'conferencia-v3' para 'conferencia-v4'). Quando o iPad abrir o app com rede,
+(exemplo: 'conferencia-v4' para 'conferencia-v5'). Quando o iPad abrir o app com rede,
 a nova versão é baixada e passa a valer na próxima vez que o app for aberto.
 
 CUIDADOS
@@ -54,3 +55,9 @@ Em um computador com Python, dentro desta pasta:   python -m http.server 8080
   (o navegador trata "localhost" como endereço seguro).
 - No iPad, pela rede, abra http://IP-DO-COMPUTADOR:8080 : o formulário, a câmera,
   as assinaturas e a planilha funcionam, mas sem modo offline e sem GPS.
+
+LEITURA DA DTA (OCR)
+A pasta ocr/ contém o leitor de texto (cerca de 9 MB). Ele é baixado uma única vez,
+na instalação do app, e depois funciona sem internet. Os arquivos .gz devem ser
+servidos como estão: não configure o servidor para enviá-los com "Content-Encoding: gzip".
+As licenças dos componentes estão em ocr/LICENCAS.txt.
