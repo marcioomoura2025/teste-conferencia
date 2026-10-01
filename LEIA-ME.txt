@@ -1,0 +1,56 @@
+VERSÃO NEUTRA PARA TESTE EM HOSPEDAGEM PÚBLICA (ex.: GitHub Pages)
+Igual à versão oficial, mas sem o logo institucional. Use apenas dados fictícios.
+
+CONFERÊNCIA DE TRÂNSITO ADUANEIRO - APP WEB INSTALÁVEL (PROTÓTIPO)
+==================================================================
+
+O QUE É
+Aplicativo web que, depois de instalado no iPad, abre e funciona sem internet.
+Não passa pela App Store e não exige conta de desenvolvedor Apple.
+
+CONTEÚDO DA PASTA
+  index.html            o aplicativo
+  manifest.webmanifest  nome, cores e ícones do app
+  sw.js                 service worker: guarda o app no aparelho para uso offline
+  icons/                ícones da tela inicial
+  LEIA-ME.txt           este arquivo
+
+PUBLICAÇÃO (TI)
+1. Copie a pasta para qualquer servidor web interno (IIS, Apache, nginx...).
+   Não há banco de dados nem código rodando no servidor: são só arquivos estáticos.
+2. É obrigatório servir por HTTPS, com certificado confiável pelos iPads (por exemplo,
+   da autoridade certificadora interna, instalada nos aparelhos por perfil/MDM).
+   Sem HTTPS o iPad não guarda o app para uso offline e não libera o GPS.
+3. Tipos de arquivo (MIME):  .webmanifest -> application/manifest+json
+                             .js          -> text/javascript
+   No IIS, a extensão .webmanifest normalmente precisa ser cadastrada.
+4. Recomenda-se servir o sw.js sem cache longo (Cache-Control: no-cache),
+   para as atualizações chegarem rápido aos aparelhos.
+
+INSTALAÇÃO NO IPAD
+1. Com o iPad na rede do escritório, abra o endereço no Safari
+   (exemplo: https://servidor-interno/conferencia/).
+2. Toque em Compartilhar e depois em "Adicionar à Tela de Início".
+3. Abra o app pelo ícone criado, ainda com rede. Aparece o selo "App disponível offline".
+4. A partir daí o app funciona sem internet. Os relatórios ficam guardados no iPad
+   até o envio.
+
+ATUALIZAÇÕES
+Ao publicar uma nova versão do index.html, altere a linha VERSAO no início do sw.js
+(exemplo: 'conferencia-v3' para 'conferencia-v4'). Quando o iPad abrir o app com rede,
+a nova versão é baixada e passa a valer na próxima vez que o app for aberto.
+
+CUIDADOS
+- Os dados ficam no armazenamento do app no iPad. Não use "Limpar histórico e dados
+  de sites" no Safari enquanto houver relatórios pendentes de envio.
+- Neste protótipo o botão "Enviar" é simulado. Na versão real, os relatórios iriam
+  para um receptor no servidor interno (pasta de rede e planilha).
+- Os limites do alerta de qualidade das fotos (LIMIAR_NITIDEZ e LIMIAR_DIRECAO,
+  no index.html) devem ser calibrados com fotos reais tiradas no pátio.
+
+TESTE RÁPIDO SEM SERVIDOR HTTPS
+Em um computador com Python, dentro desta pasta:   python -m http.server 8080
+- No próprio computador, abra http://localhost:8080 : o modo offline funciona
+  (o navegador trata "localhost" como endereço seguro).
+- No iPad, pela rede, abra http://IP-DO-COMPUTADOR:8080 : o formulário, a câmera,
+  as assinaturas e a planilha funcionam, mas sem modo offline e sem GPS.
